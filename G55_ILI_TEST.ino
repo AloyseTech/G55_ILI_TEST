@@ -18,14 +18,23 @@
 //#include "test_spi.h"
 //#include "test_ili9341.h"
 #include "test_gfx.h"
+#include "test_sprite.h"
 
 void setup() {
   // put your setup code here, to run once:
-  Serial.begin(230400);
+
+  //CMCC enable?
+  if (!CMCC->CMCC_SR)
+  {
+    CMCC->CMCC_CTRL |= CMCC_CTRL_CEN | (4 << 4);
+  }
+  //end cmcc
+
+  Serial.begin(115200);
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(7, INPUT_PULLUP);
   digitalWrite(LED_BUILTIN, HIGH);
-  spi_init(0, 1); //mode 0, clock divisor 1 (120MHz ?????)
+  spi_init(0, 2); //mode 0, clock divisor 2 (60MHz ?????)
 
 
   /*
@@ -51,52 +60,84 @@ void setup() {
   display_init();
   Serial.println("Done");
 
+  /*
+    uint32_t t = micros();
+    for (int i = 0; i < 100; i++)
+    {
+      display_fill(random(0xFFFF));
+    }
+    t = micros() - t;
+    Serial.println("Standard SPI (100 frames) :");
+    Serial.print(t);
+    Serial.println(" us");
+    Serial.print(1000000.0 / t * 100.0);
+    Serial.println(" fps");
 
-  uint32_t t = micros();
-  for (int i = 0; i < 100; i++)
-  {
-    display_fill(random(0xFFFF));
-  }
-  t = micros() - t;
-  Serial.println("Standard SPI (100 frames) :");
-  Serial.print(t);
-  Serial.println(" us");
-  Serial.print(1000000.0 / t * 100.0);
-  Serial.println(" fps");
+    delay(1000);
 
-  delay(1000);
-
-  t = micros();
-  for (int i = 0; i < 100; i++)
-  {
-    display_dmaFill(random(0xFFFF));
-  }
-  t = micros() - t;
-  Serial.println("SPI with DMA (100 frames) :");
-  Serial.print(t);
-  Serial.println(" us");
-  Serial.print(1000000.0 / t * 100.0);
-  Serial.println(" fps");
+    t = micros();
+    for (int i = 0; i < 100; i++)
+    {
+      display_dmaFill(random(0xFFFF));
+    }
+    t = micros() - t;
+    Serial.println("SPI with DMA (100 frames) :");
+    Serial.print(t);
+    Serial.println(" us");
+    Serial.print(1000000.0 / t * 100.0);
+    Serial.println(" fps");
+  */
 }
 
 bool state = 1;
 uint32_t timer = 0; uint32_t fpsTimer = 0;
 uint8_t c = 0;
 void loop() {
-  digitalWrite(LED_BUILTIN, digitalRead(7));
-  if (millis() - timer > 20)
+  /*
+  memset(frameBuffer, 0, FRAME_BUFFER_HEIGHT * FRAME_BUFFER_WIDTH);
+  for (int i = 0; i < 64; i++)
   {
-    if (c == 30)
+    drawSprite(random(240 - 32), random(320 - 32), sprite, 32, 32);
+    //drawLine(random(micros()) % 240, random(micros()) % 320, random(micros()) % 240, random(micros()) % 320, i % 16);
+    //drawLine(random(micros()) % 240, random(micros()) % 320, random(micros()) % 240, random(micros()) % 320, i % 16);
+    //drawLine(random(micros()) % 240, random(micros()) % 320, random(micros()) % 240, random(micros()) % 320, i % 16);
+    //drawLine(random(micros()) % 240, random(micros()) % 320, random(micros()) % 240, random(micros()) % 320, i % 16);
+  }
+  */
+  
+    if (!digitalRead(7))
+    {
+      memset(frameBuffer, 0, FRAME_BUFFER_HEIGHT * FRAME_BUFFER_WIDTH);
+      drawSprite(32,0, square32, 32, 32);
+      drawSprite(31,16, square32, 32, 32);
+      drawSprite(1,0, lineV1, 1, 10);
+      drawSprite(2,0, lineV1, 1, 10);
+      drawSprite(3,0, lineV1, 1, 10);
+      engine_update();
+      delay(500);
+    }
+  
+
+
+  digitalWrite(LED_BUILTIN, digitalRead(7));
+  if (millis() - timer > 0)
+  {
+    if (c == 10)
     {
       c = 0;
-      Serial.print(30000.0 / (millis() - fpsTimer));
+      Serial.print(10000.0 / (millis() - fpsTimer));
       Serial.println("fps");
       fpsTimer = millis();
     }
     timer = millis();
-    engine_update();
     //memset(frameBuffer, random(0xFF), FRAME_BUFFER_HEIGHT * FRAME_BUFFER_WIDTH);
+    //drawPixel(16,32,0xF);
+    //drawLine((0), (0), (239), (300), (0xF));
+
+    engine_update();
+
     c++;
   }
-  drawPixel(random(320), random(240), random(0xF));
+
+
 }

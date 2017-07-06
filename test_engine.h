@@ -1,7 +1,7 @@
 #include "test_ili9341.h"
 
-#define DISPLAY_WIDTH         240
-#define DISPLAY_HEIGHT        320
+#define DISPLAY_WIDTH         320
+#define DISPLAY_HEIGHT        240
 
 #define DISPLAY_COLOR_BITS    16
 #define PALETTE_SIZE          16
@@ -11,10 +11,11 @@
 #define COLOR_PER_BYTE        (8/PALETTE_COLOR_BITS)
 #define FRAME_BUFFER_WIDTH    (DISPLAY_WIDTH/COLOR_PER_BYTE)
 #define FRAME_BUFFER_HEIGHT   (DISPLAY_HEIGHT)
+#define PALETTE_ALPHA 0x0000
 
-uint16_t palette[PALETTE_SIZE] =
+const uint16_t palette[PALETTE_SIZE] =
 {
-  0xFF00,
+  PALETTE_ALPHA,
   0x001F,
   0xF800,
   0x07E0,
@@ -32,23 +33,23 @@ uint16_t palette[PALETTE_SIZE] =
   0x0F0F
 };
 
-static uint8_t frameBuffer[FRAME_BUFFER_HEIGHT][FRAME_BUFFER_WIDTH] = {0xF0};
-uint16_t lineBuffer[DISPLAY_WIDTH];
-uint8_t spiBuffer[DISPLAY_WIDTH * (DISPLAY_COLOR_BITS / 8)];
+static uint8_t frameBuffer[FRAME_BUFFER_HEIGHT][FRAME_BUFFER_WIDTH] = {0x00};
+uint16_t lineBuffer[DISPLAY_WIDTH] /*__attribute__((section("tcm")))*/;
+uint8_t spiBuffer[DISPLAY_WIDTH * (DISPLAY_COLOR_BITS / 8)] /*__attribute__((section("tcm")))*/;
 
 void engineHAL_initScreenTransfer()
 {
   writeCommand(ILI9341_CASET); // Column addr set
   spiWrite(0);
   spiWrite(0);
-  spiWrite(0);
-  spiWrite(239);
+  spiWrite(((DISPLAY_WIDTH-1) >> 8) & 0xFF);
+  spiWrite((DISPLAY_WIDTH-1) & 0xFF);
 
   writeCommand(ILI9341_PASET); // Row addr set
   spiWrite(0);
   spiWrite(0);
-  spiWrite((319 >> 8) & 0xFF);
-  spiWrite(319 & 0xFF);
+  spiWrite(((DISPLAY_HEIGHT-1) >> 8) & 0xFF);
+  spiWrite((DISPLAY_HEIGHT-1) & 0xFF);
 
   writeCommand(ILI9341_RAMWR); // write to RAM
 }
@@ -74,15 +75,18 @@ void engineHAL_endScreenTransfer()
 
 void engine_update()
 {
-  //engineHAL_initScreenTransfer();
+  while (!(SPI5->SPI_SR & SPI_SR_TXBUFE));
+  pdc_disable_transfer((Pdc *) & (SPI5->SPI_RPR), PERIPH_PTCR_RXTDIS | PERIPH_PTCR_TXTDIS);
+  engineHAL_initScreenTransfer();
   for (int line = 0; line < DISPLAY_HEIGHT; line++)
   {
     for (int col = 0; col < DISPLAY_WIDTH; col++)
     {
       uint8_t paletteColor;
       uint8_t paletteColorMask;
-      paletteColor = ((frameBuffer[line][col / COLOR_PER_BYTE] >> ((col % COLOR_PER_BYTE) * PALETTE_COLOR_BITS)) & PALETTE_COLOR_MASK);
+      paletteColor = ((frameBuffer[line][col>>1] >> ((col % COLOR_PER_BYTE) * PALETTE_COLOR_BITS)) & PALETTE_COLOR_MASK);
       uint16_t displayColor = palette[paletteColor];
+      if (displayColor != PALETTE_ALPHA);
       lineBuffer[col] = displayColor;
     }
     //engineHAL_waitLineTransferDone();

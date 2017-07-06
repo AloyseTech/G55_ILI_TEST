@@ -26,7 +26,7 @@ bool spi_init(int SPI_MODE, uint8_t divisor)
   SPI5->SPI_CR = SPI_CR_SWRST;
 
   //configure SPI peripheral
-  SPI5->SPI_MR = SPI_MR_MSTR | SPI_MR_MODFDIS | SPI_MR_PCS(0); //SPI_MR_LLB is for loop back (self test)
+  SPI5->SPI_MR = SPI_MR_MSTR | SPI_MR_MODFDIS | SPI_MR_PS; //SPI_MR_PCS(0); //SPI_MR_LLB is for loop back (self test)
 
   //set mode (clock and phase)
   switch (SPI_MODE)

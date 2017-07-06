@@ -192,6 +192,9 @@ int display_init()
   spiWrite(0x36);
   spiWrite(0x0F);
 
+  writeCommand(ILI9341_MADCTL);
+  spiWrite(MADCTL_MV | MADCTL_BGR);
+
   writeCommand(ILI9341_SLPOUT);    //Exit Sleep
   delay(50);
 
